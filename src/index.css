@@ -1,0 +1,233 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ───────────────────────────────────────────────
+   Design Tokens (CSS Custom Properties)
+   ─────────────────────────────────────────────── */
+:root {
+  /* ── Palette ── */
+  --color-bg-base:       #020617;
+  --color-bg-surface:    #0f172a;
+  --color-bg-elevated:   #1e293b;
+  --color-border:        rgba(51, 65, 85, 0.4);
+  --color-border-hover:  rgba(99, 102, 241, 0.4);
+  --color-text-primary:  rgba(255, 255, 255, 0.92);
+  --color-text-secondary: #94a3b8;
+  --color-text-muted:    #64748b;
+  --color-accent-orange: #f97316;
+  --color-accent-yellow: #eab308;
+  --color-accent-purple: #7c3aed;
+  --color-accent-emerald:#10b981;
+
+  /* ── Typography ── */
+  --font-body:    'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+
+  /* ── Spacing scale (used for padding/margin tokens) ── */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+
+  /* ── Radii ── */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ── Shadows ── */
+  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg:  0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-xl:  0 20px 60px rgba(0, 0, 0, 0.6);
+  --shadow-glow-orange: 0 0 20px rgba(249, 115, 22, 0.25);
+  --shadow-glow-purple: 0 0 20px rgba(124, 58, 237, 0.25);
+  --shadow-glow-emerald: 0 0 20px rgba(16, 185, 129, 0.25);
+
+  /* ── Transitions ── */
+  --transition-fast:   150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow:   400ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Base ── */
+  font-family: var(--font-body);
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-base);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ───────────────────────────────────────────────
+   Global Focus Styles — keyboard accessibility
+   ─────────────────────────────────────────────── */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-accent-orange);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Remove focus ring in input fields that have their own focus states */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-orange);
+}
+
+/* ───────────────────────────────────────────────
+   Selection
+   ─────────────────────────────────────────────── */
+::selection {
+  background: rgba(249, 115, 22, 0.35);
+  color: #fff;
+}
+
+/* ───────────────────────────────────────────────
+   Typography Utilities
+   ─────────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* ───────────────────────────────────────────────
+   Animations — Custom Keyframes
+   ─────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(100%); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(249, 115, 22, 0.2); }
+  50%      { box-shadow: 0 0 20px rgba(249, 115, 22, 0.45); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Animation utility classes */
+.animate-fade-in      { animation: fade-in var(--transition-normal) both; }
+.animate-slide-up     { animation: slide-up var(--transition-normal) both; }
+.animate-slide-down   { animation: slide-down var(--transition-normal) both; }
+.animate-slide-in-right { animation: slide-in-right var(--transition-normal) both; }
+.animate-scale-in     { animation: scale-in var(--transition-normal) both; }
+.animate-pulse-glow   { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* ───────────────────────────────────────────────
+   Reduced Motion — Accessibility
+   ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ───────────────────────────────────────────────
+   Form Element Resets
+   ─────────────────────────────────────────────── */
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ───────────────────────────────────────────────
+   Custom Scrollbars
+   ─────────────────────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: var(--radius-full);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.4);
+  border-radius: var(--radius-full);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(249, 115, 22, 0.5);
+}
+
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ───────────────────────────────────────────────
+   Skip-to-content link (screen-reader + keyboard)
+   ─────────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
