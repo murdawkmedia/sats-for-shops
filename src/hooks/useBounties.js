@@ -64,6 +64,10 @@ export const useBounties = (meetupId) => {
   useEffect(() => {
     if (meetupId) {
       fetchBounties();
+    } else {
+      // No meetup selected yet — clear loading state so the UI doesn't spin forever
+      setLoading(false);
+      setBounties([]);
     }
   }, [meetupId, fetchBounties]);
 

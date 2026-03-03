@@ -23,10 +23,19 @@ const formatSats = (sats) => {
 /**
  * Format an ISO date string as relative time (e.g., "2 hours ago")
  */
-const formatRelativeTime = (isoDate) => {
-  if (!isoDate) return '';
+const formatRelativeTime = (isoDateOrTimestamp) => {
+  if (!isoDateOrTimestamp) return '';
   try {
-    const date = new Date(isoDate);
+    // Handle both Unix timestamps (seconds, from Nostr) and ISO date strings
+    let date;
+    if (typeof isoDateOrTimestamp === 'number') {
+      // Unix timestamp — Nostr uses seconds, JS uses ms
+      date = new Date(isoDateOrTimestamp * (isoDateOrTimestamp < 1e12 ? 1000 : 1));
+    } else {
+      date = new Date(isoDateOrTimestamp);
+    }
+    if (isNaN(date.getTime())) return String(isoDateOrTimestamp);
+
     const now = new Date();
     const seconds = Math.floor((now - date) / 1000);
 
@@ -36,7 +45,7 @@ const formatRelativeTime = (isoDate) => {
     if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
     return date.toLocaleDateString();
   } catch {
-    return isoDate; // Fallback to original string
+    return String(isoDateOrTimestamp); // Fallback to original string
   }
 };
 
@@ -51,7 +60,9 @@ const StatusBadge = ({ status }) => {
     pending_verification: '⏳ Pending Verification',
     completed: '✅ Completed',
   };
-  return <span className={`px-3 py-1 rounded-full text-xs font-bold ${styles[status]}`}>{labels[status]}</span>;
+  const style = styles[status] || 'bg-slate-500/10 text-slate-400 border border-slate-500/20';
+  const label = labels[status] || status || 'Unknown';
+  return <span className={`px-3 py-1 rounded-full text-xs font-bold ${style}`}>{label}</span>;
 };
 
 const CommentsSection = ({ bounty, isExpanded, onToggle, newCommentValue, onCommentChange, onPostComment, commentCount, isLoggedIn, onLoginRequired }) => (
@@ -64,7 +75,7 @@ const CommentsSection = ({ bounty, isExpanded, onToggle, newCommentValue, onComm
     {isExpanded && (
       <div className="mt-3 space-y-3">
         {bounty.comments?.map((c, i) => (
-          <div key={i} className="bg-black/20 border border-slate-700/50 rounded-lg p-3">
+          <div key={c.date ? `${c.date}-${i}` : i} className="bg-black/20 border border-slate-700/50 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-orange-100 font-medium text-sm">{c.name}</span>
               <span className="text-slate-500 text-xs">{formatRelativeTime(c.date)}</span>
@@ -90,11 +101,25 @@ const CommentsSection = ({ bounty, isExpanded, onToggle, newCommentValue, onComm
  * Confirmation Modal Component
  */
 const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
+  // Close on Escape key
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e) => { if (e.key === 'Escape') onCancel(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onCancel]);
+
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+    <div
+      className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+    >
       <div className="bg-[#0f172a] rounded-2xl border border-slate-700/30 p-6 max-w-sm w-full ring-1 ring-white/5">
-        <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
+        <h3 id="confirm-modal-title" className="text-xl font-bold text-white mb-2">{title}</h3>
         <p className="text-slate-400 mb-6">{message}</p>
         <div className="flex gap-3">
           <button onClick={onCancel} className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-white font-medium">Cancel</button>
@@ -356,7 +381,9 @@ export default function BountyBoard() {
             <label htmlFor="meetup-select" className="sr-only">Select meetup</label>
             {meetupsLoading ? (
               <div className="bg-[#0f172a] border border-slate-700 rounded-xl pl-10 pr-10 py-2.5 text-slate-500 min-w-[200px]">Loading...</div>
-            ) : meetups.length === 0 ? (
+            ) : meetupError ? (
+              <div className="bg-[#0f172a] border border-red-700/50 rounded-xl pl-10 pr-10 py-2.5 text-red-400 min-w-[200px]" title={meetupError}>Failed to load meetups</div>
+          ) : meetups.length === 0 ? (
               <div className="bg-[#0f172a] border border-slate-700 rounded-xl pl-10 pr-10 py-2.5 text-slate-500 min-w-[200px]">No meetups yet</div>
             ) : (
               <select id="meetup-select" value={selectedMeetup || ''} onChange={(e) => setSelectedMeetup(e.target.value)}
@@ -388,7 +415,7 @@ export default function BountyBoard() {
             ) : (
               <button onClick={() => setShowNostrLogin(true)} className="flex-1 md:flex-none bg-gradient-to-r from-purple-600 to-orange-500 px-4 py-2.5 rounded-xl text-white text-sm font-bold transition-all hover:shadow-lg hover:shadow-purple-500/20">⚡ Login</button>
             )}
-            <button onClick={() => setShowNewMeetup(true)} className="flex-1 md:flex-none bg-orange-600 hover:bg-orange-500 px-4 py-2.5 rounded-xl text-white text-sm font-bold transition-all shadow-lg shadow-orange-500/20">+ New Meetup</button>
+            <button onClick={() => requireAuth() && setShowNewMeetup(true)} aria-label="Add a new meetup" className="flex-1 md:flex-none bg-orange-600 hover:bg-orange-500 px-4 py-2.5 rounded-xl text-white text-sm font-bold transition-all shadow-lg shadow-orange-500/20">+ New Meetup</button>
           </div>
         </nav>
 
@@ -410,7 +437,17 @@ export default function BountyBoard() {
         {/* Active Bounties */}
         {activeTab === 'bounties' && (
           <div className="space-y-6">
-            <button onClick={() => requireAuth() && setShowNewBounty(true)} className="group w-full relative overflow-hidden rounded-2xl p-[2px] transition-all hover:scale-[1.01] bg-gradient-to-r from-orange-600/60 via-amber-500/60 to-yellow-500/60 hover:from-orange-500 hover:via-amber-400 hover:to-yellow-400">
+            <button
+              onClick={() => {
+                if (!selectedMeetup) {
+                  toast.info('Select or create a meetup first!');
+                  return;
+                }
+                requireAuth() && setShowNewBounty(true);
+              }}
+              aria-label={selectedMeetup ? 'Create a new bounty' : 'Select a meetup to create a bounty'}
+              className="group w-full relative overflow-hidden rounded-2xl p-[2px] transition-all hover:scale-[1.01] bg-gradient-to-r from-orange-600/60 via-amber-500/60 to-yellow-500/60 hover:from-orange-500 hover:via-amber-400 hover:to-yellow-400"
+            >
               <div className="relative bg-[#0f172a] rounded-2xl p-6 flex items-center justify-center gap-4 group-hover:bg-slate-900/95">
                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-xl font-bold text-white shadow-lg">+</div>
                 <span className="text-xl font-bold bg-gradient-to-r from-orange-200 to-yellow-200 bg-clip-text text-transparent">Create New Bounty</span>
@@ -578,10 +615,15 @@ export default function BountyBoard() {
 
       {/* New Bounty Modal */}
       {showNewBounty && (
-        <div className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div
+          className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
+          role="dialog" aria-modal="true" aria-labelledby="new-bounty-title"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowNewBounty(false); setFormErrors({}); } }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setShowNewBounty(false); setFormErrors({}); } }}
+        >
           <div className="bg-[#0f172a] rounded-3xl border border-slate-700/30 p-8 max-w-md w-full max-h-[90vh] overflow-y-auto relative ring-1 ring-white/5">
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-orange-500 via-yellow-500 to-orange-500"></div>
-            <h2 className="text-2xl font-bold text-white mb-6 font-display">Create New Bounty</h2>
+            <h2 id="new-bounty-title" className="text-2xl font-bold text-white mb-6 font-display">Create New Bounty</h2>
             <div className="space-y-5">
               <div><label className="block text-slate-400 text-sm font-medium mb-2">Business Type</label><select value={newBountyData.businessType} onChange={(e) => setNewBountyData(p => ({ ...p, businessType: e.target.value }))} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-orange-500/50">{businessTypes.map((t, i) => <option key={i} value={t} className="bg-slate-900">{t}</option>)}</select></div>
               <div>
@@ -602,10 +644,15 @@ export default function BountyBoard() {
 
       {/* Contribute Modal */}
       {showContribute && (
-        <div className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div
+          className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
+          role="dialog" aria-modal="true" aria-labelledby="contribute-title"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowContribute(null); setFormErrors({}); } }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setShowContribute(null); setFormErrors({}); } }}
+        >
           <div className="bg-[#0f172a] rounded-3xl border border-slate-700/30 p-8 max-w-md w-full relative ring-1 ring-white/5">
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-orange-500 to-yellow-500"></div>
-            <h2 className="text-2xl font-bold text-white mb-2 font-display">Add Sats</h2>
+            <h2 id="contribute-title" className="text-2xl font-bold text-white mb-2 font-display">Add Sats</h2>
             <p className="text-slate-400 mb-6">Increase the bounty reward pool.</p>
             <div>
               <label className="block text-slate-400 text-sm font-medium mb-2">Amount (sats) <span className="text-red-400">*</span></label>
@@ -619,10 +666,15 @@ export default function BountyBoard() {
 
       {/* Claim Modal */}
       {showClaimModal && !showClaimConfirm && (
-        <div className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div
+          className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
+          role="dialog" aria-modal="true" aria-labelledby="claim-modal-title"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowClaimModal(null); setFormErrors({}); } }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setShowClaimModal(null); setFormErrors({}); } }}
+        >
           <div className="bg-[#0f172a] rounded-3xl border border-slate-700/30 p-8 max-w-md w-full max-h-[90vh] overflow-y-auto relative ring-1 ring-white/5">
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-400"></div>
-            <h2 className="text-2xl font-bold text-white mb-2 font-display">🎉 Claim Bounty</h2>
+            <h2 id="claim-modal-title" className="text-2xl font-bold text-white mb-2 font-display">🎉 Claim Bounty</h2>
             <p className="text-slate-400 mb-6">I onboarded a {showClaimModal.businessType || showClaimModal.business_type} to accept Bitcoin!</p>
             <div className="space-y-4">
               <div>
@@ -646,10 +698,15 @@ export default function BountyBoard() {
 
       {/* New Meetup Modal */}
       {showNewMeetup && (
-        <div className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div
+          className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
+          role="dialog" aria-modal="true" aria-labelledby="new-meetup-title"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowNewMeetup(false); setFormErrors({}); } }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setShowNewMeetup(false); setFormErrors({}); } }}
+        >
           <div className="bg-[#0f172a] rounded-3xl border border-slate-700/30 p-8 max-w-md w-full relative ring-1 ring-white/5">
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
-            <h2 className="text-2xl font-bold text-white mb-6 font-display">Add New Meetup</h2>
+            <h2 id="new-meetup-title" className="text-2xl font-bold text-white mb-6 font-display">Add New Meetup</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-slate-400 text-sm font-medium mb-2">Meetup Name <span className="text-red-400">*</span></label>
