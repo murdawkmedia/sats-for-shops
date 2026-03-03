@@ -56,9 +56,18 @@ export function getNDK() {
 
 /**
  * Disconnect NDK and clear the instance.
+ * Attempts to close relay WebSocket connections before clearing.
  */
 export function disconnectNDK() {
   if (ndk) {
+    // Close all relay connections to avoid zombie WebSockets
+    try {
+      for (const relay of ndk.pool.relays.values()) {
+        relay.disconnect?.();
+      }
+    } catch {
+      // Ignore cleanup errors — the relay pool may already be in a bad state
+    }
     ndk.signer = undefined;
     ndk = null;
   }
@@ -173,10 +182,14 @@ export function getConnectedRelays() {
 
   const relayStatus = [];
   for (const relay of ndk.pool.relays.values()) {
-    relayStatus.push({
-      url: relay.url,
-      connected: relay.connectivity?.status === 1, // WebSocket.OPEN
-    });
+    // NDK exposes connectivity status in different ways depending on version.
+    // Check multiple paths so we degrade gracefully instead of always showing "offline".
+    const connected =
+      relay.connectivity?.isAvailable?.() === true ||
+      relay.connectivity?.status === 1 ||
+      relay.status === 1 || // WebSocket.OPEN
+      relay.connected === true;
+    relayStatus.push({ url: relay.url, connected });
   }
 
   return relayStatus;
@@ -446,9 +459,11 @@ export async function publishBounty(data) {
 export async function fetchBounties(filters = {}) {
   if (!ndk) await connectNDK();
 
+  // Use 'bounty' tag only — NIP-01 tag filters are OR, so including 'sats-for-shops'
+  // would match meetup events (which also carry that tag).
   const filter = {
     kinds: [BOUNTY_KIND],
-    '#t': ['bounty', 'sats-for-shops'],
+    '#t': ['bounty'],
     limit: filters.limit || 50,
   };
 
@@ -489,9 +504,11 @@ export function subscribeToBounties(filters = {}, onEvent) {
     return { stop: () => { } };
   }
 
+  // Use 'bounty' tag only — NIP-01 tag filters are OR; 'sats-for-shops' alone
+  // would also match meetup events.
   const filter = {
     kinds: [BOUNTY_KIND],
-    '#t': ['bounty', 'sats-for-shops'],
+    '#t': ['bounty'],
   };
 
   if (filters.meetupId) {
@@ -753,9 +770,11 @@ export async function fetchMeetups() {
   if (!ndk) await connectNDK();
 
   try {
+    // Filter by 'meetup' tag only — using OR with 'sats-for-shops' would
+    // accidentally include bounty events that also carry that app tag.
     const events = await ndk.fetchEvents({
       kinds: [BOUNTY_KIND],
-      '#t': ['meetup', 'sats-for-shops'],
+      '#t': ['meetup'],
       limit: 100,
     });
 

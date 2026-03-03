@@ -124,13 +124,16 @@ export function createMeetup(meetupData) {
         throw new Error('A meetup with this name already exists');
     }
 
-    const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    // Prefer a pre-computed id (e.g. from api.js) so the Nostr 'd' tag matches.
+    const id = meetupData.id || name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const newMeetup = {
         id,
         name,
         country: sanitize(meetupData.country, 10) || '🌍',
         members: 1,
         created_at: new Date().toISOString(),
+        // Persist Nostr event_id when available so comments can reference it later
+        ...(meetupData.event_id ? { event_id: meetupData.event_id } : {}),
     };
     meetups.push(newMeetup);
     write(KEYS.MEETUPS, meetups);

@@ -347,8 +347,8 @@ export const requestMeetup = async (meetupData) => {
       console.warn('⚠️ Failed to publish meetup to Nostr:', nostrErr.message);
     }
 
-    // Always save locally
-    const result = storage.createMeetup(meetupData);
+    // Always save locally (pass fullData so event_id is stored alongside the meetup)
+    const result = storage.createMeetup(fullData);
     return { success: true, data: result };
   } catch (err) {
     return { success: false, error: err.message };

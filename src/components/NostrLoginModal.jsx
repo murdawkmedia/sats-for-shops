@@ -82,20 +82,31 @@ const NostrLoginModal = ({ isOpen, onClose, onSuccess }) => {
         }
     };
 
-    const handleNsecLogin = () => {
+    const handleNsecLogin = async () => {
+        setLoading(true);
         setError('');
         try {
-            const session = loginWithKey(nsecInput.trim());
+            const session = await loginWithKey(nsecInput.trim());
             onSuccess?.(session);
         } catch (err) {
             setError(err.message || 'Invalid private key');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleGenerateNew = () => {
-        const result = generateNewIdentity();
-        setGeneratedNsec(result.nsec);
-        setMode('generated');
+    const handleGenerateNew = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const result = await generateNewIdentity();
+            setGeneratedNsec(result.nsec);
+            setMode('generated');
+        } catch (err) {
+            setError(err.message || 'Failed to generate identity');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleCopyNsec = () => {
@@ -170,10 +181,11 @@ const NostrLoginModal = ({ isOpen, onClose, onSuccess }) => {
                             {/* Generate new identity */}
                             <button
                                 onClick={handleGenerateNew}
-                                className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-slate-950 font-bold py-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-orange-500/30 flex items-center justify-center gap-3"
+                                disabled={loading}
+                                className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-slate-950 font-bold py-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-orange-500/30 flex items-center justify-center gap-3 disabled:opacity-50"
                             >
                                 <span className="text-xl" aria-hidden="true">✨</span>
-                                Generate New Identity
+                                {loading ? 'Generating...' : 'Generate New Identity'}
                             </button>
 
                             {/* Browse without login */}
@@ -249,10 +261,10 @@ const NostrLoginModal = ({ isOpen, onClose, onSuccess }) => {
 
                             <button
                                 onClick={handleNsecLogin}
-                                disabled={!nsecInput.trim()}
+                                disabled={!nsecInput.trim() || loading}
                                 className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-slate-950 font-bold py-3 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                             >
-                                Login
+                                {loading ? 'Logging in...' : 'Login'}
                             </button>
 
                             <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
